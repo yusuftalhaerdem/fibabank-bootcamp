@@ -2,71 +2,67 @@
 
 This project is simple implementation of e-commerce with microservices.
 
-## 1-)Project Overview
+## Project Overview
 
 We have 3 microservices in this project: commerce, inventory and shopping. Each microsevices have its interface but I thought main way to communicate would be through the commerce interface.
+![](readme-resource/images/overview.png)
 
-#### a) Inventory Service
+#### Inventory MicroService
 
-Inventory class has two entity classes: Category and Product. It also includes Dtos of those classes.
+Inventory class has two entity classes: Category and Product. It also includes Dtos of those classes. I did seperated the classes mostly according to this. Product has its own service and controller chained next to its repository. Category has same thing. We can access them from <code>localhost:8081/inventory/'</code> . We have 4 endpoint belongs to this service.
+| Method Type | Route | Parameters | Response | Description |
+| ----------- | --------------------------------- | ------------------------- | ----------------------- |----------------------------------------------------- |
+| GET | **/categories** | None | List\<CategoryDto> | Return category list which shows all categories. |
+| GET | **/addCategory/{category_name}** | Path variable, String category_name|\<CategoryDto> | Adds category to inventory.|
+| GET | **/products/{categoryId}** | Path variable, Long category_id| List\<ProductDto> | Returns categories under given category|
+| GET | **/product/{product_id}** | Path variable, Long product_id | ProductDto| return the requested product object.
 
-The Inventory service has 2 entities Category and Product. The category has OneToMany relation with Product and Product has ManyToOne relation. I applied SOLID principles with 3 layered designs. There are business, data, presentation layers and utility packages. The data layer has entity definitions and corresponding repositories. The business layer has a manager for entities and depends on entity repositories, also includes dto classes for entities. The presentation layer has rest controllers and depends on managers. The utility package has a static Messages class for all response texts and has Result classes. Result classes were used for creating responses and used other services as well.
+#### Shopping MicroService
 
-The Inventory service has **_"/inventory"_** prefix for the following routes.
+The Shopping service has 2 entities Cart and Cart Product. Shopping service is pretty similiar to inventory. It designed with similiar thoughts.
 
-| Method Type | Route                             | Parameters                       | Description                                                      |
-| ----------- | --------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
-| _GET_       | **/product/{productId}**          | Only path variable.              | Returns product with given _prdouctId_ if exist.                 |
-| _GET_       | **/products/{categoryId}**        | Only path varible.               | Returns prodcuts under category for given _categoryId_ if exist. |
-| _POST_      | **/product/add**                  | Prodcut object in request body.  | Returns product addition status. Category must exist beforehand. |
-| _DELETE_    | **/product/delete/{productId}**   | Only path variable               | Returns deletion status.                                         |
-| _GET_       | **/categories**                   | No parameter.                    | Returns all categeries.                                          |
-| _GET_       | **/category/{categoryId}**        | Only path variable.              | Returns category for given _categoryId_.                         |
-| _POST_      | **/category/add**                 | Category object in request body. | Returns category addition status.                                |
-| _DELETE_    | **/category/delete/{categoryId}** | Only path variable.              | Returns deletion status.                                         |
+The Shopping service has <code>localhost:8082/shopping</code> prefix for the following routes.
 
-### 1-b) Shopping Service
+| Method Type | Route                                   | Parameters                                      | Response     | Description                        |
+| ----------- | --------------------------------------- | ----------------------------------------------- | ------------ | ---------------------------------- |
+| GET         | **/cart/create/{customer_name}**        | Path variable String customer_name              | Long cart_id | Creates a cart and returns its id. |
+| GET         | **/cart/checkout/{cart_id}**            | Path variable Long cart_id                      | String       | Returns status of cart checkout.   |
+| GET         | **/cart/find/{cart_id}**                | Path variable Long cart_id                      | CartDto      | Returns the cart with given id.    |
+| POST        | **/cart/add**                           | CartProductDto in request body                  | String       | Updates the CartProductDto.        |
+| DELETE      | **/cart/{cart_id}/remove/{product_id}** | Path variables Long cart_id and Long product_id | String       | Removes product from cart.         |
 
-The Shopping service has 2 entities Cart and Cart Product. The Cart has OneToMany relation with Product relation.
-Other details are the same with Inventory Service.
+#### Commerce MicroService
 
-The Shopping service has **_"/shopping"_** prefix for the following routes.
-| Method Type | Route | Parameters |Description
-| -------------| ------------- | ------------- | ------------- |
-| _GET_ | **/cart/create/{customerName}** |Only path variable. |Returns created or existing cart's id.|
-| _GET_ | **/cart/checkout/{cartId}** |Only path variable. |Returns status of cart checkout.|
-| _GET_ | **/cart/find/{cartId}** |Only path variable. |Returns cart with given _cartId_ if exist.|
-| _POST_ | **/cart/add** |Cart product object in request body.|Returns status of product addition to cart.|
-| _DELETE_ | **/cart/{cartId}/remove/{productId}** |Only path variables.|Returns status of product deletion of cart.|
+Commerce is not a microservice with a database connection but a gateway microservice with _RestRequest_ class. This RestRequest class provides it to have connections with different microservices. Analyzing available microservices dynamicly would be overkill for this project so I did not it. Instead, I implemeneted MicroserviceAddresses class. This class hold addresses of Inventory and Shopping microservices. If we prefer to change those addresses, updating MicroserviceAddresses class in this microservice should be enough.
 
-## 1-c) API-Gateway
+I will not show endpoints of this class. This class has no extra endpoints to previous two table. You can access them via commerce from <code>loacalhost:8080/commerce</code>. You should add append <code>/inventory</code> or <code>/shopping</code> according which microservices you target.
 
-The Gateway has all the aforementioned routes with the prefix **_"/commerce"_** with the same properties. For all the routes gateway just exchanges request except **/cart/find/{cartId}**. For getting a cart, cart products do not have _productName_ field to send this to UI, therefore gateway uses the Inventory service to find product names.
+But it does some extra operation in service layer such as completing Dtos which will require info from both microservices.
 
-## 1-d) Curl commands
+### Tests
 
-Some curl commands
+I did use basic Junit tests in this project. Also I did some black box tests to make sure there is no obvious logic or calculation error.
 
-| Curl command                                                                                                                                                        | Description             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| curl http://localhost:8080/commerce/inventory/categories                                                                                                            | Get all categories.     |
-| curl http://localhost:8080/commerce/inventory/product/18                                                                                                            | Get prodcut with id 18. |
-| curl -d "{\"categoryId\":1,\"productName\":\"Test cup\",\"salesPrice\":3}" -H "Content-Type: application/json" http://localhost:8080/commerce/inventory/product/add | Add product             |
-| curl http://localhost:8080/commerce/shopping/cart/find/4                                                                                                            | Find cart with id 4.    |
+**inventory:**
 
-Some example output
+| categories                                           | product                                           |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| ![](readme-resource/images/inventory_categories.png) | ![](readme-resource/images/inventory_product.png) |
 
-| Success                                   | Fail                                       |
-| ----------------------------------------- | ------------------------------------------ |
-| ![](readme-resource/images/curl1-suc.png) | ![](readme-resource/images/curl1-fail.png) |
-| ![](readme-resource/images/curl2-suc.png) | ![](readme-resource/images/curl2-fail.png) |
-| ![](readme-resource/images/curl3-suc.png) | ![](readme-resource/images/curl3-fail.png) |
-| ![](readme-resource/images/curl4-suc.png) | ![](readme-resource/images/curl4-fail.png) |
+**shopping:**
+|cart|shopping|
+|-|-|
+| ![](readme-resource/images/shoppingCart.png) | ![](readme-resource/images/shopping.png) |
 
-## 1-e) Angular UI
+**commerce:**
+![](readme-resource/images/commerce_junit.png)
 
-The client was created with Angular and it connects to Gateway service only. Some of the entity dtos are also defined on the client side. Pages are mostly used from https://freefrontend.com and are all functional.
-
-| Create basket                        | Catalog                              | Category view                        | Basket view                          |
-| ------------------------------------ | ------------------------------------ | ------------------------------------ | ------------------------------------ |
-| ![](readme-resource/images/ui-1.png) | ![](readme-resource/images/ui-2.png) | ![](readme-resource/images/ui-3.png) | ![](readme-resource/images/ui-4.png) |
+**Some postman outputs:**
+![](readme-resource/images/postman_1.png)
+![](readme-resource/images/postman_2.png)
+![](readme-resource/images/postman_3.png)
+![](readme-resource/images/postman_4.png)
+![](readme-resource/images/postman_5.png)
+![](readme-resource/images/postman_6.png)
+![](readme-resource/images/postman_7.png)
+![](readme-resource/images/postman_8.png)

@@ -25,7 +25,7 @@ class CartServiceImplTest {
     void createCart() {
         ResponseEntity<Long> response = cartService.createCart(null);
         System.out.println(response.getBody());
-        assertEquals(HttpStatus.OK, response.getStatusCode(),"Error occurred while creating new cart.");
+        assertEquals(response.getStatusCode(),HttpStatus.OK, "Error occurred while creating new cart.");
     }
 
     @Test
